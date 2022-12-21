@@ -3,7 +3,7 @@ use std::net::TcpListener;
 #[tokio::test]
 async fn health_check_works() {
     let address = spawn_app();
-    // Now the server is running and we can proceed with ou test logic
+    // Now the server is running and we can proceed with our test logic
 
     let client = reqwest::Client::new();
     let response = client
