@@ -1,6 +1,6 @@
 use std::net::TcpListener;
 
-use tokio::spawn;
+use zero2prod::startup::run;
 
 fn spawn_app() -> String {
     // Bind to a random available port
@@ -8,7 +8,7 @@ fn spawn_app() -> String {
     let port = listener.local_addr().unwrap().port();
 
     // This returns a `Server`, which can be awaited (or polled)
-    let server = zero2prod::run(listener).expect("Failed to run server");
+    let server = run(listener).expect("Failed to run server");
 
     let _ = tokio::spawn(server); // We are not doing anything to the handle
 
