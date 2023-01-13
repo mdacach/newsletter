@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x # Prints every command to the terminal
+set -x           # Prints every command to the terminal
 set -eo pipefail # End the script if any command fails
 
 # Check if a custom user has been set, otherwise default to 'postgres'
@@ -11,7 +11,6 @@ DB_NAME="${POSTGRES_DB:=newsletter}"
 # Check if a custom port has been set, otherwise default to '5432'
 DB_PORT="${POSTGRES_PORT:=5432}"
 
-
 # Launch postgres using Docker
 docker run \
   -e POSTGRES_USER=${DB_USER} \
@@ -20,4 +19,4 @@ docker run \
   -p "${DB_PORT}":5432 \
   -d postgres \
   postgres -N 1000
-  # Increased maximum number of connections for testing purposes
+# Increased maximum number of connections for testing purposes
