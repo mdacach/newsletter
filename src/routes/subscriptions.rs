@@ -17,8 +17,10 @@ pub struct FormData {
 // it returns 400 BAD REQUEST
 // otherwise, the arguments are "populated" and the function is invoked
 pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> impl Responder {
+    let request_id = Uuid::new_v4();
     log::info!(
-        "Adding '{}' '{}' as a new subscriber.",
+        "request_id {} - Adding '{}' '{}' as a new subscriber.",
+        request_id,
         form.email,
         form.name
     );
@@ -36,13 +38,20 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> im
     // This is a result, as the query may fail
     match insert_query.execute(pool.get_ref()).await {
         Ok(_) => {
-            log::info!("New subscriber details have been saved");
+            log::info!(
+                "request_id {} - New subscriber details have been saved",
+                request_id
+            );
             HttpResponse::Ok()
         }
         Err(e) => {
             // We use debug formatting here because we want access to more information
             // about the error in the logs.
-            log::error!("Failed to execute query: {:?}", e);
+            log::error!(
+                "request_id {} - Failed to execute query: {:?}",
+                request_id,
+                e
+            );
             HttpResponse::InternalServerError()
         }
     }
