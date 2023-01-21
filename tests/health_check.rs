@@ -1,8 +1,9 @@
 use std::net::TcpListener;
 
-use sqlx::PgPool;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
+use uuid::Uuid;
 
-use zero2prod::configuration::get_configuration;
+use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::run;
 
 pub struct TestApp {
@@ -16,10 +17,13 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let configuration = get_configuration().expect("Failed to read configuration.");
-    let connection_pool = PgPool::connect(&configuration.database.connection_string())
-        .await
-        .expect("Failed to connect to Postgres.");
+    let mut configuration = get_configuration().expect("Failed to read configuration.");
+    // As we need test isolation between the tests, we are going to create a new logical database
+    // for each test. This way, tests won't interfere with each other, as each one will use a different
+    // database.
+    configuration.database.database_name = Uuid::new_v4().to_string(); // Random name for this database
+
+    let connection_pool = configure_database(&configuration.database).await;
 
     // This returns a `Server`, which can be awaited (or polled)
     let server = run(listener, connection_pool.clone()).expect("Failed to run server");
@@ -32,6 +36,34 @@ async fn spawn_app() -> TestApp {
         address,
         db_pool: connection_pool,
     }
+}
+
+async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // Establish the connection to Postgres
+    // Note that here we do not use the database name, as we want to connect to Postgres directly
+    // But the database exists, and it is either
+    // 1 - our app database name
+    // 2 - a random name for testing purposes only
+    let mut connection = PgConnection::connect(&config.connection_string_without_db())
+        .await
+        .expect("Failed to connect to Postgres.");
+    // Create the initial database
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database.");
+
+    // Migrate database with file we have saved
+    // This will create our needed table
+    let connection_pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database.");
+
+    connection_pool
 }
 
 #[tokio::test]
