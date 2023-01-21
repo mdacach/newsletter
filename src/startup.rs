@@ -1,6 +1,7 @@
 use std::net::TcpListener;
 
 use actix_web::dev::Server;
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use sqlx::PgPool;
 
@@ -22,6 +23,8 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
     // top of a TCP connection itself).
     let server = HttpServer::new(move || {
         App::new()
+            // Middleware
+            .wrap(Logger::default())
             // Note that order here is important, if we had a dynamic /{name} route first,
             // requests to /health_check would match {name}
             .route("/health_check", web::get().to(health_check))
