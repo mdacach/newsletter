@@ -18,7 +18,7 @@ pub struct FormData {
 // otherwise, the arguments are "populated" and the function is invoked
 pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> impl Responder {
     let request_id = Uuid::new_v4();
-    log::info!(
+    tracing::info!(
         "request_id {} - Adding '{}' '{}' as a new subscriber.",
         request_id,
         form.email,
@@ -38,7 +38,7 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> im
     // This is a result, as the query may fail
     match insert_query.execute(pool.get_ref()).await {
         Ok(_) => {
-            log::info!(
+            tracing::info!(
                 "request_id {} - New subscriber details have been saved",
                 request_id
             );
@@ -47,7 +47,7 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> im
         Err(e) => {
             // We use debug formatting here because we want access to more information
             // about the error in the logs.
-            log::error!(
+            tracing::error!(
                 "request_id {} - Failed to execute query: {:?}",
                 request_id,
                 e
