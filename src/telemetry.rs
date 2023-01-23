@@ -2,6 +2,7 @@ use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
+use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 // TODO: study tracing further
@@ -16,12 +17,20 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 /// We need to explicitly call out that the returned subscriber is
 /// `Send` and `Sync` to make it possible to pass it to `init_subscriber`
 /// later on.
-pub fn get_subscriber(name: String, env_filter: String) -> impl Subscriber + Send + Sync {
+pub fn get_subscriber<Sink>(
+    name: String,
+    env_filter: String,
+    sink: Sink,
+) -> impl Subscriber + Send + Sync
+where
+    Sink: for<'a> MakeWriter<'a> + Send + Sync + 'static,
+{
     // Filter spans depending on level. If no level is designated (with RUST_LOG), set it to "info".
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(env_filter));
     // Format the spans in the `bunyan` format (can then be used as JSON).
-    let formatting_layer = BunyanFormattingLayer::new(name, std::io::stdout);
+    // Note that we can choose where the output goes with the second argument.
+    let formatting_layer = BunyanFormattingLayer::new(name, sink);
     // This is our actual "implementation".
 
     // Create a subscriber with corresponding layers

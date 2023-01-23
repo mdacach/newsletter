@@ -8,7 +8,8 @@ use zero2prod::telemetry;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let subscriber = telemetry::get_subscriber("zero2prod".to_string(), "info".to_string());
+    let subscriber =
+        telemetry::get_subscriber("zero2prod".to_string(), "info".to_string(), std::io::stdout);
     telemetry::init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");

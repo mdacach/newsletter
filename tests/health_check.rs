@@ -11,9 +11,20 @@ use zero2prod::telemetry;
 // This should only run one time, not once for each test
 // So we wrap it within `once_cell`
 static TRACING: sync::Lazy<()> = sync::Lazy::new(|| {
-    // Use `tracing` for logging
-    let subscriber = telemetry::get_subscriber("test".to_string(), "debug".to_string());
-    telemetry::init_subscriber(subscriber);
+    let default_filter_level = "info".to_string();
+    let subscriber_name = "test".to_string();
+
+    // We have the option of printing the logs when testing too
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber =
+            telemetry::get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
+        telemetry::init_subscriber(subscriber);
+    } else {
+        // By default we will just ignore them
+        let subscriber =
+            telemetry::get_subscriber(subscriber_name, default_filter_level, std::io::sink);
+        telemetry::init_subscriber(subscriber);
+    }
 });
 
 pub struct TestApp {
