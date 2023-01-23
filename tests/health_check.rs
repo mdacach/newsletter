@@ -1,10 +1,20 @@
 use std::net::TcpListener;
 
+use once_cell::sync;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::run;
+use zero2prod::telemetry;
+
+// This should only run one time, not once for each test
+// So we wrap it within `once_cell`
+static TRACING: sync::Lazy<()> = sync::Lazy::new(|| {
+    // Use `tracing` for logging
+    let subscriber = telemetry::get_subscriber("test".to_string(), "debug".to_string());
+    telemetry::init_subscriber(subscriber);
+});
 
 pub struct TestApp {
     pub address: String,
@@ -12,6 +22,9 @@ pub struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
+    // Runs only if it's the first time
+    sync::Lazy::force(&TRACING);
+
     // Bind to a random available port
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
     let port = listener.local_addr().unwrap().port();
