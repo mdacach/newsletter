@@ -1,6 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
 use sqlx::PgPool;
+use tracing::Instrument;
 use uuid::Uuid;
 
 // This tells serde to implement deserialization for us
@@ -18,12 +19,20 @@ pub struct FormData {
 // otherwise, the arguments are "populated" and the function is invoked
 pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> impl Responder {
     let request_id = Uuid::new_v4();
-    tracing::info!(
-        "request_id {} - Adding '{}' '{}' as a new subscriber.",
-        request_id,
-        form.email,
-        form.name
+    // Spans are more powerful, have related metadata and can be entered/exited multiple times
+    let request_span = tracing::info_span!(
+        "Adding a new subscriber.",
+        %request_id, // % means to use Display
+        subscriber_email = %form.email,
+        subscriber_name = %form.name
     );
+    // Using `enter` in an async function is not great because it can be polled
+    // (and parked) multiple times.
+    let _request_span_guard = request_span.enter(); // The span only starts working when we enter here
+                                                    // and it will be closed when we drop this guard (similar to C++ RAII)
+
+    let query_span = tracing::info_span!("Saving new subscriber details in the database.");
+
     // This only runs when we execute it with some connection
     let insert_query = sqlx::query!(
         r#"
@@ -36,7 +45,11 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> im
     );
 
     // This is a result, as the query may fail
-    match insert_query.execute(pool.get_ref()).await {
+    match insert_query
+        .execute(pool.get_ref())
+        .instrument(query_span)
+        .await
+    {
         Ok(_) => {
             tracing::info!(
                 "request_id {} - New subscriber details have been saved",
