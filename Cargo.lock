@@ -1568,8 +1568,18 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b362b83898e0e69f38515b82ee15aa80636befe47c3b6d3d89a911e78fc228ce"
 dependencies = [
- "ring",
- "untrusted",
+    "ring",
+    "untrusted",
+]
+
+[[package]]
+name = "secrecy"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
+dependencies = [
+    "serde 1.0.152",
+    "zeroize",
 ]
 
 [[package]]
@@ -1578,9 +1588,9 @@ version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "645926f31b250a2dca3c232496c2d898d91036e45ca0e97e0e2390c54e11be36"
 dependencies = [
- "bitflags",
- "core-foundation",
- "core-foundation-sys",
+    "bitflags",
+    "core-foundation",
+    "core-foundation-sys",
  "libc",
  "security-framework-sys",
 ]
@@ -2476,20 +2486,27 @@ dependencies = [
 name = "zero2prod"
 version = "0.1.0"
 dependencies = [
- "actix-web",
- "chrono",
- "config",
- "once_cell",
- "reqwest",
- "serde 1.0.152",
- "sqlx",
- "tokio",
- "tracing",
- "tracing-bunyan-formatter",
- "tracing-log",
- "tracing-subscriber",
- "uuid",
+    "actix-web",
+    "chrono",
+    "config",
+    "once_cell",
+    "reqwest",
+    "secrecy",
+    "serde 1.0.152",
+    "sqlx",
+    "tokio",
+    "tracing",
+    "tracing-bunyan-formatter",
+    "tracing-log",
+    "tracing-subscriber",
+    "uuid",
 ]
+
+[[package]]
+name = "zeroize"
+version = "1.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c394b5bd0c6f669e7275d9c20aa90ae064cb22e75a1cad54e1b34088034b149f"
 
 [[package]]
 name = "zstd"
@@ -2497,7 +2514,7 @@ version = "0.12.2+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9262a83dc741c0b0ffec209881b45dbc232c21b02a2b9cb1adb93266e41303d"
 dependencies = [
- "zstd-safe",
+    "zstd-safe",
 ]
 
 [[package]]
