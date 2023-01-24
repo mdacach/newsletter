@@ -1,9 +1,9 @@
 use std::net::TcpListener;
 
 use actix_web::dev::Server;
-use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use sqlx::PgPool;
+use tracing_actix_web::TracingLogger;
 
 use crate::routes::health_check;
 use crate::routes::subscribe;
@@ -24,7 +24,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
     let server = HttpServer::new(move || {
         App::new()
             // Middleware
-            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
             // Note that order here is important, if we had a dynamic /{name} route first,
             // requests to /health_check would match {name}
             .route("/health_check", web::get().to(health_check))
