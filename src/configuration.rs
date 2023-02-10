@@ -40,14 +40,12 @@ impl DatabaseSettings {
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    // Initialize our configuration reader
-    let mut settings = config::Config::default();
+    let settings = config::Config::builder()
+        .add_source(config::File::new(
+            "configuration.yaml",
+            config::FileFormat::Yaml,
+        ))
+        .build()?;
 
-    // Add configuration values from a file name `configuration`.
-    // It will look for any top-level file with an extension
-    // that `config` knows how to parse: yaml, json, etc.
-    settings.merge(config::File::with_name("configuration"))?;
-
-    // Try to convert the configuration values it read into our Settings type
-    settings.try_into()
+    settings.try_deserialize::<Settings>()
 }
