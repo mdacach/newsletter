@@ -1,5 +1,5 @@
 [package]
-name = "zero2prod"
+name = "newsletter"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [[bin]]
 path = "src/main.rs"
-name = "zero2prod"
+name = "newsletter"
 
 [dependencies]
 actix-web = "4.2.1"

@@ -3,14 +3,17 @@ use std::net::TcpListener;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
-use zero2prod::configuration::get_configuration;
-use zero2prod::startup::run;
-use zero2prod::telemetry;
+use newsletter::configuration::get_configuration;
+use newsletter::startup::run;
+use newsletter::telemetry;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let subscriber =
-        telemetry::get_subscriber("zero2prod".to_string(), "info".to_string(), std::io::stdout);
+    let subscriber = telemetry::get_subscriber(
+        "newsletter".to_string(),
+        "info".to_string(),
+        std::io::stdout,
+    );
     telemetry::init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");

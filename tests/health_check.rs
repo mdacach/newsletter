@@ -5,9 +5,9 @@ use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
-use zero2prod::configuration::{get_configuration, DatabaseSettings};
-use zero2prod::startup::run;
-use zero2prod::telemetry;
+use newsletter::configuration::{get_configuration, DatabaseSettings};
+use newsletter::startup::run;
+use newsletter::telemetry;
 
 // This should only run one time, not once for each test
 // So we wrap it within `once_cell`
