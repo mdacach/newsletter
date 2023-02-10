@@ -13,6 +13,9 @@ COPY . .
 # Here we have saved that information running `sqlx prepare` (saves to a file sqlx can read).
 ENV SQLX_OFFLINE true
 
+# For config parsing.
+ENV APP_ENVIRONMENT production
+
 # Now that we have all our source code, we can build the binary.
 RUN cargo build --release
 
