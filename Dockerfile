@@ -1,5 +1,6 @@
-# This builder step will be discarded at the end of build.
-FROM rust:1.67.0 AS builder
+# Use cargo chef in order to cache dependencies layer.
+# Refer to cargo chef docs: https://github.com/LukeMathWalker/cargo-chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.67.0 as chef
 
 # Will create the app folder if it does not exist.
 WORKDIR /app
@@ -7,7 +8,22 @@ WORKDIR /app
 # Install system dependencies (for linking, in this case).
 RUN apt update && apt install lld clang -y
 
+FROM chef AS planner
+
 # Copy all from our directories into Docker.
+COPY . .
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef as builder
+
+COPY --from=planner /app/recipe.json recipe.json
+
+# This builds only the project's dependencies.
+# If the depenedencies have not changed between builds, this layer
+# will be cached.
+RUN cargo chef cook --release --recipe-path recipe.json
+
 COPY . .
 
 # `sqlx`, by default, needs a database connection in compile time to assert the queries are correct.
@@ -15,7 +31,7 @@ COPY . .
 ENV SQLX_OFFLINE true
 
 # Now that we have all our source code, we can build the binary.
-RUN cargo build --release
+RUN cargo build --release --bin newsletter
 
 # Runtime will take the compiled binary from the builder
 # and only store that (much smaller image size than before).
