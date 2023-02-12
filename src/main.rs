@@ -27,8 +27,6 @@ async fn main() -> std::io::Result<()> {
             .clone()
     });
 
-    tracing::info!("The database URL is: {}", database_url);
-
     let connection_pool = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy(database_url.as_str())
