@@ -19,7 +19,9 @@ impl AsRef<str> for SubscriberEmail {
 
 #[cfg(test)]
 mod tests {
-    use claim::assert_err;
+    use claim::{assert_err, assert_ok};
+    use fake::faker::internet::en::FreeEmail;
+    use fake::Fake;
 
     use super::SubscriberEmail;
 
@@ -39,5 +41,11 @@ mod tests {
     fn email_missing_subject_is_rejected() {
         let email = "@gmail.com".to_string();
         assert_err!(SubscriberEmail::parse(email));
+    }
+
+    #[test]
+    fn valid_emails_are_parsed_successfully() {
+        let email = FreeEmail().fake();
+        assert_ok!(SubscriberEmail::parse(email));
     }
 }
