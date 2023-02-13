@@ -35,7 +35,7 @@ impl SubscriberName {
 
 #[cfg(test)]
 mod tests {
-    use claim::{assert_err, assert_ok};
+    use claims::{assert_err, assert_ok};
 
     use crate::domain::SubscriberName;
 

@@ -26,7 +26,6 @@ once_cell = "1"
 secrecy = { version = "0.8", features = ["serde"] }
 tracing-actix-web = "0.7"
 unicode-segmentation = "1"
-claim = "0.5"
 validator = "0.16"
 
 [dependencies.sqlx]
@@ -48,3 +47,4 @@ fake = "2.5.0"
 quickcheck = "1"
 quickcheck_macros = "1"
 rand = "0.8"
+claims = "0.7"

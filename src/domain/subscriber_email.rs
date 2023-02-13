@@ -19,11 +19,10 @@ impl AsRef<str> for SubscriberEmail {
 
 #[cfg(test)]
 mod tests {
-    use claim::{assert_err, assert_ok};
+    use claims::{assert_err, assert_ok};
     use fake::faker::internet::en::FreeEmail;
     use fake::Fake;
     use quickcheck::Gen;
-
     use rand::rngs::StdRng;
     use rand::SeedableRng;
 
