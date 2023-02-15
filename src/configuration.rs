@@ -1,18 +1,26 @@
 use secrecy::{ExposeSecret, Secret};
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
+    pub smtp: SMTPSettings,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
+pub struct SMTPSettings {
+    pub username: String,
+    pub password: Secret<String>,
+    pub from: String,
+}
+
+#[derive(serde::Deserialize, Debug)]
 pub struct ApplicationSettings {
     pub port: u16,
     pub host: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct DatabaseSettings {
     pub username: String,
     // Secret does not let we expose this by mistake (e.g. Debug display)
@@ -76,6 +84,9 @@ impl TryFrom<String> for Environment {
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
+    // Merge variables in .env file to OS environment variables.
+    dotenv::dotenv().ok();
+
     let bash_path = std::env::current_dir().expect("Failed to determine the current directory");
     let configuration_directory = bash_path.join("configuration");
 
