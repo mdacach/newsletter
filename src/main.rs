@@ -17,19 +17,10 @@ async fn main() -> std::io::Result<()> {
     telemetry::init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
-    // Fly app will have the DATABASE_URL environment variable automatically set here,
-    // as we have attached the app to the database.
-    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-        configuration
-            .database
-            .connection_string()
-            .expose_secret()
-            .clone()
-    });
 
     let connection_pool = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))
-        .connect_lazy(database_url.as_str())
+        .connect_lazy(configuration.database.connection_string().expose_secret())
         .expect("Failed to create Postgres connection pool.");
 
     let address = format!(
