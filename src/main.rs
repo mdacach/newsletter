@@ -4,6 +4,7 @@ use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
 
 use newsletter::configuration::get_configuration;
+use newsletter::email_client::EmailClient;
 use newsletter::startup::run;
 use newsletter::telemetry;
 
@@ -22,6 +23,8 @@ async fn main() -> std::io::Result<()> {
         .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy(configuration.database.connection_string().expose_secret())
         .expect("Failed to create Postgres connection pool.");
+
+    let email_client = EmailClient::from_settings(configuration.smtp);
 
     let address = format!(
         "{}:{}",
