@@ -68,7 +68,7 @@ jobs:
 
       - name: Check sqlx-data.json is up-to-date
         run: |
-          cargo sqlx prepare --check --database-url postgres://postgres:password@localhost:5432/newsletter -- --bin newsletter
+          cargo sqlx prepare --check --database-url postgres://postgres:password@localhost:5432/newsletter
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
