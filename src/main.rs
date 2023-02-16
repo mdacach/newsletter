@@ -1,11 +1,6 @@
-use std::net::TcpListener;
-
-use secrecy::ExposeSecret;
-use sqlx::postgres::PgPoolOptions;
-
 use newsletter::configuration::get_configuration;
-use newsletter::email_client::EmailClient;
-use newsletter::startup::{build, run};
+
+use newsletter::startup::build;
 use newsletter::telemetry;
 
 #[tokio::main]
