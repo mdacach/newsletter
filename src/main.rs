@@ -24,7 +24,7 @@ async fn main() -> std::io::Result<()> {
         .connect_lazy(configuration.database.connection_string().expose_secret())
         .expect("Failed to create Postgres connection pool.");
 
-    let email_client = EmailClient::from_settings(configuration.smtp);
+    let _email_client = EmailClient::from_settings(configuration.smtp);
 
     let address = format!(
         "{}:{}",
