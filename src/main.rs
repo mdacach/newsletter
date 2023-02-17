@@ -1,6 +1,6 @@
 use newsletter::configuration::get_configuration;
+use newsletter::startup::Application;
 
-use newsletter::startup::build;
 use newsletter::telemetry;
 
 #[tokio::main]
@@ -13,7 +13,8 @@ async fn main() -> std::io::Result<()> {
     telemetry::init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
-    let server = build(configuration).await?;
-    server.await?;
+    let application = Application::build(&configuration).await?;
+    application.run_until_stopped().await?;
+
     Ok(())
 }

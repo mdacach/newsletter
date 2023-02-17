@@ -1,12 +1,12 @@
-use std::net::TcpListener;
-
 use once_cell::sync;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
 use newsletter::configuration::{get_configuration, DatabaseSettings};
-use newsletter::startup::run;
+
+use newsletter::startup::get_connection_pool;
+use newsletter::startup::Application;
 use newsletter::telemetry;
 
 // This should only run one time, not once for each test
@@ -37,29 +37,31 @@ pub async fn spawn_app() -> TestApp {
     // Runs only if it's the first time
     sync::Lazy::force(&TRACING);
 
-    // Bind to a random available port
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
+    let configuration = {
+        let mut configuration = get_configuration().expect("Failed to read configuration.");
+        // As we need test isolation between the tests, we are going to create a new logical database
+        // for each test. This way, tests won't interfere with each other, as each one will use a different
+        // database.
+        configuration.database.database_name = Uuid::new_v4().to_string(); // Random name for this database
 
-    let mut configuration = get_configuration().expect("Failed to read configuration.");
-    // As we need test isolation between the tests, we are going to create a new logical database
-    // for each test. This way, tests won't interfere with each other, as each one will use a different
-    // database.
-    configuration.database.database_name = Uuid::new_v4().to_string(); // Random name for this database
+        configuration.application.port = 0; // 0 means a random port.
 
-    let connection_pool = configure_database(&configuration.database).await;
+        configuration
+    };
 
-    // This returns a `Server`, which can be awaited (or polled)
-    let server = run(listener, connection_pool.clone()).expect("Failed to run server");
+    configure_database(&configuration.database).await;
 
-    let _ = tokio::spawn(server); // We are not doing anything to the handle
+    let application = Application::build(&configuration)
+        .await
+        .expect("Failed to build application.");
+    let address = format!("http://127.0.0.1:{}", application.port());
+    let _ = tokio::spawn(application.run_until_stopped()); // We are not doing anything to the handle
 
     // Return the port so that our tests knows where to request
     // And the pool handle so that they can access the connections
     TestApp {
         address,
-        db_pool: connection_pool,
+        db_pool: get_connection_pool(&configuration.database),
     }
 }
 

@@ -13,9 +13,11 @@ pub struct EmailClient {
 }
 
 impl EmailClient {
-    pub fn from_settings(settings: SMTPSettings) -> Self {
-        let credentials =
-            Credentials::new(settings.username, settings.password.expose_secret().clone());
+    pub fn from_settings(settings: &SMTPSettings) -> Self {
+        let credentials = Credentials::new(
+            settings.username.clone(),
+            settings.password.expose_secret().clone(),
+        );
 
         let mailer = SmtpTransport::relay("smtp.gmail.com")
             .unwrap()
