@@ -1,3 +1,5 @@
 .idea
 
 /target
+# The .env file has sensitive data. A .env.template is commited instead.
+/.env
