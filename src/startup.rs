@@ -9,8 +9,8 @@ use tracing_actix_web::TracingLogger;
 
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::health_check;
 use crate::routes::subscribe;
+use crate::routes::{confirm, health_check};
 
 // We need a way to know which port the application is running,
 // and Server alone does not expose that.
@@ -84,6 +84,7 @@ fn run(
             // requests to /health_check would match {name}
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
+            .route("/subscriptions/confirm", web::get().to(confirm))
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
     })
