@@ -25,7 +25,7 @@ impl Application {
         let connection_pool = get_connection_pool(&configuration.database);
 
         // This will eventually be used by the other functions.
-        let _email_client = EmailClient::from_settings(&configuration.smtp);
+        let email_client = EmailClient::from_settings(&configuration.smtp);
 
         // Address we are going to use for our application.
         let address = format!(
@@ -34,7 +34,7 @@ impl Application {
         );
         let listener = TcpListener::bind(address)?;
         let port = listener.local_addr().unwrap().port();
-        let server = run(listener, connection_pool)?;
+        let server = run(listener, connection_pool, email_client)?;
 
         Ok(Self { port, server })
     }
@@ -57,12 +57,18 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
         .expect("Wrong Database URL format.")
 }
 
-fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
+fn run(
+    listener: TcpListener,
+    db_pool: PgPool,
+    email_client: EmailClient,
+) -> Result<Server, std::io::Error> {
     // First create the shareable state, and then move inside the closure
     // otherwise you would create it multiple times, every time the closure
     // runs.
     // web::Data is an ARC, so we can clone it inside the closure
     let db_pool = web::Data::new(db_pool);
+
+    let email_client = web::Data::new(email_client);
 
     // HttpServer receives a closure returning an App
     // It will call this closure in multiple threads (to create a multi-threaded
@@ -79,6 +85,7 @@ fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error>
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .app_data(db_pool.clone()) // Here we pass a clone
+            .app_data(email_client.clone())
     })
     .listen(listener)?
     .run(); // It does not run yet because we have not awaited it
