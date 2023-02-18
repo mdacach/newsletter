@@ -21,11 +21,13 @@ pub struct Application {
 
 impl Application {
     pub async fn build(configuration: &Settings) -> Result<Self, std::io::Error> {
+        // Get the connection pool from already-running database.
         let connection_pool = get_connection_pool(&configuration.database);
 
         // This will eventually be used by the other functions.
         let _email_client = EmailClient::from_settings(&configuration.smtp);
 
+        // Address we are going to use for our application.
         let address = format!(
             "{}:{}",
             configuration.application.host, configuration.application.port
@@ -47,6 +49,8 @@ impl Application {
 }
 
 pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
+    // Here the database is already running, by virtue of `configure_database`.
+    // So now we want to establish the connection.
     PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy(configuration.connection_string().expose_secret())
