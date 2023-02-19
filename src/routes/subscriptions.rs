@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use crate::email_client::EmailClient;
+use crate::startup::ApplicationBaseUrl;
 
 // This tells serde to implement deserialization for us
 #[derive(serde::Deserialize)]
@@ -31,7 +32,7 @@ impl TryFrom<FormData> for NewSubscriber {
 // it returns 400 BAD REQUEST
 // otherwise, the arguments are "populated" and the function is invoked
 #[tracing::instrument(name = "Adding a new subscriber",
-skip(form, pool, email_client),
+skip(form, pool, email_client, base_url),
 fields(
 subscriber_email = % form.email,
 subscriber_name = % form.name
@@ -40,6 +41,7 @@ pub async fn subscribe(
     form: web::Form<FormData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
+    base_url: web::Data<ApplicationBaseUrl>,
 ) -> HttpResponse {
     let new_subscriber = match NewSubscriber::try_from(form.0) {
         Ok(subscriber) => subscriber,
@@ -50,7 +52,7 @@ pub async fn subscribe(
         return HttpResponse::InternalServerError().finish();
     }
 
-    if send_confirmation_email(&email_client, new_subscriber).is_err() {
+    if send_confirmation_email(&email_client, new_subscriber, &base_url, "temp_token").is_err() {
         return HttpResponse::InternalServerError().finish();
     }
 
@@ -63,8 +65,13 @@ pub async fn subscribe(
 pub fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,
+    base_url: &ApplicationBaseUrl,
+    confirmation_token: &str,
 ) -> Result<(), String> {
-    let confirmation_link = "https://my-api.com/subscriptions/confirm";
+    let confirmation_link = format!(
+        "{}/subscriptions/confirm?subscription_token={}",
+        base_url.0, confirmation_token
+    );
     let body = format!(
         "Welcome to our newsletter!\nVisit {confirmation_link} to confirm your subscription."
     );

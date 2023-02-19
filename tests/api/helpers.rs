@@ -29,6 +29,7 @@ static TRACING: sync::Lazy<()> = sync::Lazy::new(|| {
 });
 
 pub struct TestApp {
+    pub port: u16,
     pub address: String,
     pub db_pool: PgPool,
 }
@@ -66,12 +67,14 @@ pub async fn spawn_app() -> TestApp {
     let application = Application::build(&configuration)
         .await
         .expect("Failed to build application.");
+    let application_port = application.port();
     let address = format!("http://127.0.0.1:{}", application.port());
     let _ = tokio::spawn(application.run_until_stopped()); // We are not doing anything to the handle
 
     // Return the port so that our tests knows where to request
     // And the pool handle so that they can access the connections
     TestApp {
+        port: application_port,
         address,
         db_pool: get_connection_pool(&configuration.database),
     }

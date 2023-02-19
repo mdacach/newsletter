@@ -34,7 +34,12 @@ impl Application {
         );
         let listener = TcpListener::bind(address)?;
         let port = listener.local_addr().unwrap().port();
-        let server = run(listener, connection_pool, email_client)?;
+        let server = run(
+            listener,
+            connection_pool,
+            email_client,
+            configuration.application.base_url.clone(),
+        )?;
 
         Ok(Self { port, server })
     }
@@ -47,6 +52,10 @@ impl Application {
         self.server.await
     }
 }
+
+// We need to wrap it into a type in order to be able to extract it with actix-web.
+#[derive(Debug)]
+pub struct ApplicationBaseUrl(pub String);
 
 pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
     // Here the database is already running, by virtue of `configure_database`.
@@ -61,6 +70,7 @@ fn run(
     listener: TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
+    base_url: String,
 ) -> Result<Server, std::io::Error> {
     // First create the shareable state, and then move inside the closure
     // otherwise you would create it multiple times, every time the closure
@@ -69,6 +79,8 @@ fn run(
     let db_pool = web::Data::new(db_pool);
 
     let email_client = web::Data::new(email_client);
+
+    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
 
     // HttpServer receives a closure returning an App
     // It will call this closure in multiple threads (to create a multi-threaded
@@ -87,6 +99,7 @@ fn run(
             .route("/subscriptions/confirm", web::get().to(confirm))
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
+            .app_data(base_url.clone())
     })
     .listen(listener)?
     .run(); // It does not run yet because we have not awaited it
