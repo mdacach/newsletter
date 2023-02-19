@@ -49,9 +49,10 @@ pub async fn subscribe(
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
-    if insert_subscriber(&pool, &new_subscriber).await.is_err() {
-        return HttpResponse::InternalServerError().finish();
-    }
+    let subscriber_id = match insert_subscriber(&pool, &new_subscriber).await {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
 
     if send_confirmation_email(&email_client, new_subscriber, &base_url, "temp_token").is_err() {
         return HttpResponse::InternalServerError().finish();
@@ -87,13 +88,14 @@ pub fn send_confirmation_email(
 pub async fn insert_subscriber(
     pool: &PgPool,
     new_subscriber: &NewSubscriber,
-) -> Result<(), sqlx::Error> {
+) -> Result<Uuid, sqlx::Error> {
+    let subscriber_id = Uuid::new_v4();
     // This only runs when we execute it with some connection
     let insert_query = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at, status)
         VALUES ($1, $2, $3, $4, 'pending_confirmation')"#,
-        Uuid::new_v4(),
+        subscriber_id,
         new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),
         Utc::now()
@@ -104,7 +106,7 @@ pub async fn insert_subscriber(
         e
     })?;
 
-    Ok(())
+    Ok(subscriber_id)
 }
 
 #[tracing::instrument(
