@@ -34,12 +34,17 @@ impl Application {
         );
         let listener = TcpListener::bind(address)?;
         let port = listener.local_addr().unwrap().port();
-        let server = run(
-            listener,
-            connection_pool,
-            email_client,
-            configuration.application.base_url.clone(),
-        )?;
+        // If we are in production, the base_url is already everything needed to access our application
+        // but in local, the base_url is missing the port, so we add it manually here (for testing purposes).
+        let base_url = {
+            let mut url = configuration.application.base_url.clone();
+            let environment = std::env::var("APP_ENVIRONMENT").unwrap_or_else(|_| "local".into());
+            if environment == "local" {
+                url = format!("{}:{}", url, port);
+            }
+            url
+        };
+        let server = run(listener, connection_pool, email_client, base_url)?;
 
         Ok(Self { port, server })
     }
