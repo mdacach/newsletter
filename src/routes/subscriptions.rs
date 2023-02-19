@@ -1,5 +1,6 @@
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
+use rand::Rng;
 use sqlx::PgPool;
 use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
@@ -149,4 +150,12 @@ pub fn is_valid_name(s: &str) -> bool {
     let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
 
     !(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
+}
+
+fn generate_subscription_token() -> String {
+    let mut rng = rand::thread_rng();
+    std::iter::repeat_with(|| rng.sample(rand::distributions::Alphanumeric))
+        .map(char::from)
+        .take(25)
+        .collect()
 }
