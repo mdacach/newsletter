@@ -4,7 +4,7 @@ use crate::helpers;
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let app = helpers::spawn_app().await;
 
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    let body = "name=le%20guin&email=test%40example.com";
     let response = app.post_subscriptions(body.into()).await;
 
     dbg!(&response);
