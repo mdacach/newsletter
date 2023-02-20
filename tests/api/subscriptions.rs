@@ -7,6 +7,8 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = app.post_subscriptions(body.into()).await;
 
+    dbg!(&response);
+
     assert_eq!(response.status().as_u16(), 200);
 }
 
