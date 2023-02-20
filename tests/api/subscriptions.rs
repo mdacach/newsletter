@@ -2,14 +2,21 @@ use crate::helpers;
 
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
+    // Arrange
     let app = helpers::spawn_app().await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    let body = "name=le%20guin&email=test%40example.com";
+    // Mock::given(path("/email"))
+    //     .and(method("POST"))
+    //     .respond_with(ResponseTemplate::new(200))
+    //     .mount(&app.email_server)
+    //     .await;
+
+    // Act
     let response = app.post_subscriptions(body.into()).await;
 
-    dbg!(&response);
-
-    assert_eq!(response.status().as_u16(), 200);
+    // Assert
+    assert_eq!(200, response.status().as_u16());
 }
 
 #[tokio::test]
