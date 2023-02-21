@@ -34,11 +34,12 @@ impl TryFrom<FormData> for NewSubscriber {
 // If this fails (for any argument passed, in this case we only have one),
 // it returns 400 BAD REQUEST
 // otherwise, the arguments are "populated" and the function is invoked
-#[tracing::instrument(name = "Adding a new subscriber",
-skip(form, pool, email_client, base_url),
-fields(
-subscriber_email = % form.email,
-subscriber_name = % form.name
+#[tracing::instrument(
+    name = "Adding a new subscriber",
+    skip(form, pool, email_client, base_url),
+    fields(
+        subscriber_email = % form.email,
+        subscriber_name = % form.name
 ))]
 pub async fn subscribe(
     form: web::Form<FormData>,
