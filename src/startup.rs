@@ -22,12 +22,19 @@ pub struct Application {
 impl Application {
     pub async fn build(configuration: &Settings) -> Result<Self, std::io::Error> {
         // Get the connection pool from already-running database.
+        // (The docker script spins up postgres)
         let connection_pool = get_connection_pool(&configuration.database);
 
-        // This will eventually be used by the other functions.
+        // We use SMTP to send emails. The credentials are set inside EmailClient.
+        // From here on, we can just use it directly.
         let email_client = EmailClient::from_settings(&configuration.smtp);
 
         // Address we are going to use for our application.
+        // This address may change between environments.
+        // 1. For local environment, we want to use
+        //    127.0.0.1 to only accept local connections.
+        // 2. For production environment, we should use 0.0.0.0 so that it can receive
+        //    connections from anyone.
         let address = format!(
             "{}:{}",
             configuration.application.host, configuration.application.port
@@ -62,9 +69,14 @@ impl Application {
 #[derive(Debug)]
 pub struct ApplicationBaseUrl(pub String);
 
+// A connection pool is a good approach for when we want to have multiple users using the same database.
+// An alternative would be to wrap the PgConnection in a Mutex, but this will have efficiency problems,
+// as each user would need to wait for the lock.
+// With a PgPool, we let Postgres handle the concurrency.
 pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
-    // Here the database is already running, by virtue of `configure_database`.
-    // So now we want to establish the connection.
+    // The database exposed by `configuration.connection_string()` is already running,
+    // because of the Docker script. Here we just need to connect to it.
+
     PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy(configuration.connection_string().expose_secret())
@@ -92,7 +104,7 @@ fn run(
     // web server).
     // This means anything inside the closure (the connection in this case), must be
     // shareable between threads, which is not the case of PgConnection (as it sits on
-    // top of a TCP connection itself).
+    // top of a TCP connection itself), thus we use a PgPool instead.
     let server = HttpServer::new(move || {
         App::new()
             // Middleware
@@ -102,6 +114,7 @@ fn run(
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
+            // Shareable state between handlers
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
             .app_data(base_url.clone())
