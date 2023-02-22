@@ -76,3 +76,19 @@ async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
         )
     }
 }
+
+#[tokio::test]
+async fn subscribe_fails_if_there_is_a_fatal_database_error() {
+    let app = helpers::spawn_app().await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    // This breaks the database -> we should not expect the API to respond successfully now.
+    sqlx::query!("ALTER TABLE subscription_tokens DROP COLUMN subscription_token;")
+        .execute(&app.db_pool)
+        .await
+        .unwrap();
+
+    let response = app.post_subscriptions(body.into()).await;
+
+    assert_eq!(response.status().as_u16(), 500);
+}
