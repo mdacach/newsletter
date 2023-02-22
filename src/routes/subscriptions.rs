@@ -1,3 +1,4 @@
+use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use chrono::Utc;
 use rand::Rng;
@@ -20,7 +21,7 @@ pub struct FormData {
 }
 
 impl TryFrom<FormData> for NewSubscriber {
-    type Error = String;
+    type Error = ValidationError;
 
     fn try_from(value: FormData) -> Result<Self, Self::Error> {
         let name = SubscriberName::parse(value.name)?;
@@ -28,6 +29,9 @@ impl TryFrom<FormData> for NewSubscriber {
         Ok(Self { email, name })
     }
 }
+
+#[derive(Debug)]
+pub struct ValidationError(pub String);
 
 // Actix will try to extract the arguments (in this case web::Form) from the
 // request with from_request. (Internally it will try to deserialize the body
@@ -47,41 +51,83 @@ pub async fn subscribe(
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let new_subscriber = match NewSubscriber::try_from(form.0) {
-        Ok(subscriber) => subscriber,
-        Err(_) => return Ok(HttpResponse::BadRequest().finish()),
-    };
+) -> Result<HttpResponse, SubscribeError> {
+    let new_subscriber = NewSubscriber::try_from(form.0)?;
 
-    let mut transaction = match pool.begin().await {
-        Ok(transaction) => transaction,
-        Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
-    };
+    let mut transaction = pool.begin().await?;
 
-    let subscriber_id = match insert_subscriber(&mut transaction, &new_subscriber).await {
-        Ok(id) => id,
-        Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
-    };
+    let subscriber_id = insert_subscriber(&mut transaction, &new_subscriber).await?;
+
     let subscription_token = generate_subscription_token();
+
     store_token(&mut transaction, subscriber_id, &subscription_token).await?;
 
-    if send_confirmation_email(
+    send_confirmation_email(
         &email_client,
         new_subscriber,
         &base_url,
         &subscription_token,
-    )
-    .is_err()
-    {
-        return Ok(HttpResponse::InternalServerError().finish());
-    }
+    )?;
 
-    if transaction.commit().await.is_err() {
-        return Ok(HttpResponse::InternalServerError().finish());
-    }
+    transaction.commit().await?;
 
     Ok(HttpResponse::Ok().finish())
 }
+
+#[derive(Debug)]
+pub enum SubscribeError {
+    ValidationError(ValidationError),
+    DatabaseError(sqlx::Error),
+    StoreTokenError(StoreTokenError),
+    SendEmailError(SendEmailError),
+}
+
+impl From<ValidationError> for SubscribeError {
+    fn from(error: ValidationError) -> Self {
+        Self::ValidationError(error)
+    }
+}
+
+impl From<SendEmailError> for SubscribeError {
+    fn from(error: SendEmailError) -> Self {
+        Self::SendEmailError(error)
+    }
+}
+
+impl From<StoreTokenError> for SubscribeError {
+    fn from(error: StoreTokenError) -> Self {
+        Self::StoreTokenError(error)
+    }
+}
+
+impl From<sqlx::Error> for SubscribeError {
+    fn from(error: sqlx::Error) -> Self {
+        Self::DatabaseError(error)
+    }
+}
+
+impl Display for SubscribeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to create a new subscriber.")
+    }
+}
+
+impl std::error::Error for SubscribeError {}
+
+impl ResponseError for SubscribeError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            SubscribeError::ValidationError(_) => StatusCode::BAD_REQUEST,
+            SubscribeError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::StoreTokenError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::SendEmailError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SendEmailError(pub String);
+
 #[tracing::instrument(
     name = "Send a confirmation email to a new subscriber",
     skip(email_client, new_subscriber)
@@ -91,7 +137,7 @@ pub fn send_confirmation_email(
     new_subscriber: NewSubscriber,
     base_url: &ApplicationBaseUrl,
     confirmation_token: &str,
-) -> Result<(), String> {
+) -> Result<(), SendEmailError> {
     let confirmation_link = format!(
         "{}/subscriptions/confirm?subscription_token={}",
         base_url.0, confirmation_token
@@ -172,8 +218,6 @@ impl std::fmt::Debug for StoreTokenError {
         write!(f, "{}\nCaused by:\n\t{}", self, self.0)
     }
 }
-
-impl ResponseError for StoreTokenError {}
 
 impl std::error::Error for StoreTokenError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {

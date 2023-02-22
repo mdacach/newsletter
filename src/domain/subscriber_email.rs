@@ -1,12 +1,17 @@
+use crate::routes::ValidationError;
+
 #[derive(Debug)]
 pub struct SubscriberEmail(String);
 
 impl SubscriberEmail {
-    pub fn parse(s: String) -> Result<SubscriberEmail, String> {
+    pub fn parse(s: String) -> Result<SubscriberEmail, ValidationError> {
         if validator::validate_email(&s) {
             Ok(Self(s))
         } else {
-            Err(format!("{} is not a valid subscriber email.", s))
+            Err(ValidationError(format!(
+                "{} is not a valid subscriber email.",
+                s
+            )))
         }
     }
 }

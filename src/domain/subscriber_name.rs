@@ -1,3 +1,4 @@
+use crate::routes::ValidationError;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ impl AsRef<str> for SubscriberName {
 }
 
 impl SubscriberName {
-    pub fn parse(s: String) -> Result<SubscriberName, String> {
+    pub fn parse(s: String) -> Result<SubscriberName, ValidationError> {
         let is_empty_or_whitespace = s.trim().is_empty();
 
         // A grapheme is defined by the Unicode standard as a "user-perceived" character:
@@ -26,7 +27,10 @@ impl SubscriberName {
         let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
 
         if is_empty_or_whitespace || is_too_long || contains_forbidden_characters {
-            Err(format!("{} is not a valid subscriber name.", s))
+            Err(ValidationError(format!(
+                "{} is not a valid subscriber name.",
+                s
+            )))
         } else {
             Ok(Self(s))
         }

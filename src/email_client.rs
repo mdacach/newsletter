@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 use crate::configuration::SMTPSettings;
 use crate::domain::SubscriberEmail;
+use crate::routes::SendEmailError;
 
 pub struct EmailClient {
     mailer: SmtpTransport,
@@ -38,7 +39,7 @@ impl EmailClient {
         to: &SubscriberEmail,
         subject: &str,
         body: &str,
-    ) -> Result<(), String> {
+    ) -> Result<(), SendEmailError> {
         let test_email = Message::builder()
             .from(self.from.clone())
             .to(to.as_ref().parse().unwrap())
@@ -49,7 +50,9 @@ impl EmailClient {
         let sent_email = self.mailer.send(&test_email);
         match sent_email {
             Ok(_) => Ok(()),
-            Err(_) => Err("Could not send email through SMTP".to_string()),
+            Err(_) => Err(SendEmailError(
+                "Could not send email through SMTP".to_string(),
+            )),
         }
     }
 }
