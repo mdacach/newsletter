@@ -43,6 +43,8 @@ impl DatabaseSettings {
             self.database_name
         ))
     }
+    // We want to connect with postgres itself directly in order to create new logical databases.
+    // This is used for testing.
     pub fn connection_string_without_db(&self) -> Secret<String> {
         Secret::new(format!(
             "postgres://{}:{}@{}:{}",
@@ -86,6 +88,7 @@ impl TryFrom<String> for Environment {
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // Merge variables in .env file to OS environment variables.
+    // This makes the variables accessible for `config` below.
     dotenv::dotenv().ok();
 
     let bash_path = std::env::current_dir().expect("Failed to determine the current directory");
@@ -95,6 +98,8 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         .unwrap_or_else(|_| "local".into()) // By default, we use Local environment.
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT.");
+    // Depending on the environment (local or production), we load the corresponding configuration
+    // file.
     let environment_filename = format!("{}.yaml", environment.as_str());
 
     let base = config::File::from(configuration_directory.join("base.yaml"));
@@ -103,6 +108,8 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let settings = config::Config::builder()
         .add_source(base)
         .add_source(environment)
+        // This determines the format of environment variables we must set.
+        // APP_SMTP__USERNAME will map to Settings.smtp.username
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
@@ -110,5 +117,6 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         )
         .build()?;
 
+    // Serde will return to it strongly typed.
     settings.try_deserialize::<Settings>()
 }
