@@ -54,9 +54,11 @@ pub async fn subscribe(
 ) -> Result<HttpResponse, SubscribeError> {
     let new_subscriber = NewSubscriber::try_from(form.0)?;
 
-    let mut transaction = pool.begin().await?;
+    let mut transaction = pool.begin().await.map_err(SubscribeError::PoolError)?;
 
-    let subscriber_id = insert_subscriber(&mut transaction, &new_subscriber).await?;
+    let subscriber_id = insert_subscriber(&mut transaction, &new_subscriber)
+        .await
+        .map_err(SubscribeError::InsertSubscriberError)?;
 
     let subscription_token = generate_subscription_token();
 
@@ -69,7 +71,10 @@ pub async fn subscribe(
         &subscription_token,
     )?;
 
-    transaction.commit().await?;
+    transaction
+        .commit()
+        .await
+        .map_err(SubscribeError::TransactionCommitError)?;
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -77,7 +82,9 @@ pub async fn subscribe(
 #[derive(Debug)]
 pub enum SubscribeError {
     ValidationError(ValidationError),
-    DatabaseError(sqlx::Error),
+    PoolError(sqlx::Error),
+    InsertSubscriberError(sqlx::Error),
+    TransactionCommitError(sqlx::Error),
     StoreTokenError(StoreTokenError),
     SendEmailError(SendEmailError),
 }
@@ -100,12 +107,6 @@ impl From<StoreTokenError> for SubscribeError {
     }
 }
 
-impl From<sqlx::Error> for SubscribeError {
-    fn from(error: sqlx::Error) -> Self {
-        Self::DatabaseError(error)
-    }
-}
-
 impl Display for SubscribeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Failed to create a new subscriber.")
@@ -118,9 +119,11 @@ impl ResponseError for SubscribeError {
     fn status_code(&self) -> StatusCode {
         match self {
             SubscribeError::ValidationError(_) => StatusCode::BAD_REQUEST,
-            SubscribeError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::PoolError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SubscribeError::StoreTokenError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             SubscribeError::SendEmailError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::InsertSubscriberError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            SubscribeError::TransactionCommitError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
