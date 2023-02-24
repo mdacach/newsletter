@@ -180,10 +180,7 @@ pub async fn insert_subscriber(
         Utc::now()
     );
 
-    insert_query.execute(transaction).await.map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
-    })?;
+    insert_query.execute(transaction).await?;
 
     Ok(subscriber_id)
 }
@@ -205,10 +202,7 @@ pub async fn store_token(
     )
     .execute(transaction)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        StoreTokenError(e)
-    })?;
+    .map_err(|e| StoreTokenError(e))?;
 
     Ok(())
 }
