@@ -30,6 +30,7 @@ validator = "0.16"
 lettre = "0.10"
 dotenv = "0.15.0"
 rand = { version = "0.8", features = ["std_rng"] }
+thiserror = "1.0.38"
 
 [dependencies.sqlx]
 version = "0.6"
