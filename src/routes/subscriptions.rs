@@ -3,6 +3,7 @@ use actix_web::{web, HttpResponse, ResponseError};
 use chrono::Utc;
 use rand::Rng;
 use sqlx::{PgPool, Postgres, Transaction};
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
@@ -32,6 +33,14 @@ impl TryFrom<FormData> for NewSubscriber {
 
 #[derive(Debug)]
 pub struct ValidationError(pub String);
+
+impl Display for ValidationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid input.")
+    }
+}
+
+impl Error for ValidationError {}
 
 // Actix will try to extract the arguments (in this case web::Form) from the
 // request with from_request. (Internally it will try to deserialize the body
@@ -109,11 +118,39 @@ impl From<StoreTokenError> for SubscribeError {
 
 impl Display for SubscribeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to create a new subscriber.")
+        match self {
+            SubscribeError::ValidationError(e) => write!(f, "{}", e),
+            SubscribeError::PoolError(_) => {
+                write!(f, "Failed to acquire a Postgres connection from the pool.")
+            }
+            SubscribeError::InsertSubscriberError(_) => {
+                write!(f, "Failed to insert new subscriber in the database.")
+            }
+            SubscribeError::TransactionCommitError(_) => write!(
+                f,
+                "Failed to commit SQL transaction to store a new subscriber."
+            ),
+            SubscribeError::StoreTokenError(_) => write!(
+                f,
+                "Failed to store the confirmation token for a new subscriber."
+            ),
+            SubscribeError::SendEmailError(_) => write!(f, "Failed to send a confirmation email."),
+        }
     }
 }
 
-impl std::error::Error for SubscribeError {}
+impl Error for SubscribeError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            SubscribeError::ValidationError(e) => Some(e),
+            SubscribeError::PoolError(e) => Some(e),
+            SubscribeError::InsertSubscriberError(e) => Some(e),
+            SubscribeError::TransactionCommitError(e) => Some(e),
+            SubscribeError::StoreTokenError(e) => Some(e),
+            SubscribeError::SendEmailError(e) => Some(e),
+        }
+    }
+}
 
 impl ResponseError for SubscribeError {
     fn status_code(&self) -> StatusCode {
@@ -130,6 +167,14 @@ impl ResponseError for SubscribeError {
 
 #[derive(Debug)]
 pub struct SendEmailError(pub String);
+
+impl Display for SendEmailError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to send email.")
+    }
+}
+
+impl Error for SendEmailError {}
 
 #[tracing::instrument(
     name = "Send a confirmation email to a new subscriber",
@@ -222,8 +267,8 @@ impl std::fmt::Debug for StoreTokenError {
     }
 }
 
-impl std::error::Error for StoreTokenError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl Error for StoreTokenError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         Some(&self.0)
     }
 }
