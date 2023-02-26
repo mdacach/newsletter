@@ -40,14 +40,14 @@ impl EmailClient {
         subject: &str,
         body: &str,
     ) -> Result<(), SendEmailError> {
-        let test_email = Message::builder()
+        let email = Message::builder()
             .from(self.from.clone())
             .to(to.as_ref().parse().unwrap())
             .subject(subject)
             .body(body.to_string())
             .expect("Could not send email ");
 
-        let sent_email = self.mailer.send(&test_email);
+        let sent_email = self.mailer.send(&email);
         match sent_email {
             Ok(_) => Ok(()),
             Err(_) => Err(SendEmailError(
