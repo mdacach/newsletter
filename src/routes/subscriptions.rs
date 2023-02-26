@@ -1,11 +1,12 @@
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use chrono::Utc;
 use rand::Rng;
 use sqlx::{PgPool, Postgres, Transaction};
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
 use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
 
@@ -109,7 +110,7 @@ impl Debug for SubscribeError {
     }
 }
 
-fn error_chain_fmt(e: &impl Error, f: &mut Formatter<'_>) -> std::fmt::Result {
+pub fn error_chain_fmt(e: &impl Error, f: &mut Formatter<'_>) -> std::fmt::Result {
     writeln!(f, "{}\n", e)?;
     let mut current = e.source();
     while let Some(cause) = current {
