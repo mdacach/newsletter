@@ -2,15 +2,12 @@ use std::fmt::Formatter;
 
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
+use anyhow::Context;
 use sqlx::PgPool;
 
+use crate::domain::SubscriberEmail;
+use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
-
-#[derive(serde::Deserialize)]
-pub struct BodyData {
-    _title: String,
-    _content: String,
-}
 
 #[derive(thiserror::Error)]
 pub enum PublishError {
@@ -32,25 +29,45 @@ impl ResponseError for PublishError {
     }
 }
 
+#[derive(serde::Deserialize)]
+pub struct BodyData {
+    title: String,
+    content: String,
+}
+
 pub async fn publish_newsletter(
-    _body: web::Json<BodyData>,
+    body: web::Json<BodyData>,
     pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
 ) -> Result<HttpResponse, PublishError> {
-    let _subscribers = get_confirmed_subscribers(&pool).await?;
+    let subscribers = get_confirmed_subscribers(&pool).await?;
+    for subscriber in subscribers {
+        email_client
+            .send_email(&subscriber.email, &body.title, &body.content)
+            .with_context(|| {
+                format!(
+                    "Failed to send newsletter issue to {}",
+                    subscriber.email.as_ref()
+                )
+            })?;
+    }
 
     Ok(HttpResponse::Ok().finish())
 }
 
 struct ConfirmedSubscriber {
-    email: String,
+    email: SubscriberEmail,
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip(pool))]
 async fn get_confirmed_subscribers(
     pool: &PgPool,
 ) -> Result<Vec<ConfirmedSubscriber>, anyhow::Error> {
+    struct Row {
+        email: String,
+    }
     let rows = sqlx::query_as!(
-        ConfirmedSubscriber,
+        Row,
         r#"
         SELECT email
         FROM subscriptions
@@ -60,5 +77,12 @@ async fn get_confirmed_subscribers(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
+    let confirmed_subscribers = rows
+        .into_iter()
+        .map(|r| ConfirmedSubscriber {
+            email: SubscriberEmail::parse(r.email).unwrap(),
+        })
+        .collect();
+
+    Ok(confirmed_subscribers)
 }
