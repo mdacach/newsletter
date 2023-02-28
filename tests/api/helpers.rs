@@ -4,7 +4,6 @@ use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
 use newsletter::configuration::{get_configuration, DatabaseSettings};
-
 use newsletter::startup::get_connection_pool;
 use newsletter::startup::Application;
 use newsletter::telemetry;
@@ -46,6 +45,27 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to execute request to subscriptions endpoint.")
+    }
+
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let (username, password) = self.test_user().await;
+
+        reqwest::Client::new()
+            .post(&format!("{}/newsletters", &self.address))
+            .basic_auth(username, Some(password))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn test_user(&self) -> (String, String) {
+        let row = sqlx::query!("SELECT username, password FROM users LIMIT 1")
+            .fetch_one(&self.db_pool)
+            .await
+            .expect("Failed to fetch test user.");
+
+        (row.username, row.password)
     }
 }
 
