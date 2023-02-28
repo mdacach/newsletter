@@ -34,7 +34,7 @@ pub struct TestApp {
     pub port: u16,
     pub address: String,
     pub db_pool: PgPool,
-    test_user: TestUser,
+    pub test_user: TestUser,
 }
 
 pub struct TestUser {
