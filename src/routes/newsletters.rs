@@ -58,10 +58,25 @@ async fn validate_credentials(
     credentials: Credentials,
     pool: &PgPool,
 ) -> Result<uuid::Uuid, PublishError> {
-    let (user_id, expected_password_hash) = get_stored_credentials(&credentials.username, pool)
-        .await
-        .map_err(PublishError::UnexpectedError)?
-        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username.")))?;
+    // We use placeholder values here so that the credential validation takes the same time for
+    // an existent user and a non-existent one. This means an attacker can not use the runtime of
+    // the code to check if a user exists.
+    let mut user_id = None;
+    // It's important that this password is created with the same parameters as we use.
+    let mut expected_password_hash = Secret::new(
+        "$argon2id$v=19$m=15000,t=2,p=1$\
+                gZiV/M1gPc22ElAH/Jh1Hw$\
+                CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
+            .to_string(),
+    );
+    if let Some((stored_user_id, stored_expected_password_hash)) =
+        get_stored_credentials(&credentials.username, pool)
+            .await
+            .map_err(PublishError::UnexpectedError)?
+    {
+        user_id = Some(stored_user_id);
+        expected_password_hash = stored_expected_password_hash;
+    }
 
     let current_span = tracing::Span::current();
     tokio::task::spawn_blocking(move || {
@@ -72,7 +87,10 @@ async fn validate_credentials(
     .context("Failed to spawn blocking task.")
     .map_err(PublishError::UnexpectedError)??; // Double question mark!
 
-    Ok(user_id)
+    // We only return the positive answer if
+    // 1. The password matched (otherwise we have upstreamed an error already).
+    // 2. The username existed (otherwise the username would be None).
+    user_id.ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username.")))
 }
 
 #[tracing::instrument(
