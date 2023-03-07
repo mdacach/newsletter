@@ -65,9 +65,11 @@ impl ResponseError for LoginError {
     }
 
     fn error_response(&self) -> HttpResponse<BoxBody> {
+        let encoded_error = urlencoding::Encoded::new(self.to_string());
         // Redirect the user to the login page again, so that they can reenter their credentials.
         HttpResponse::build(self.status_code())
-            .insert_header((LOCATION, "/login"))
+            // Add the error as a query param so that we can render it into the page.
+            .insert_header((LOCATION, format!("/login?error={}", encoded_error)))
             .finish()
     }
 }
