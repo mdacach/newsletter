@@ -2,7 +2,7 @@ use std::net::TcpListener;
 
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
@@ -51,7 +51,13 @@ impl Application {
             }
             url
         };
-        let server = run(listener, connection_pool, email_client, base_url)?;
+        let server = run(
+            listener,
+            connection_pool,
+            email_client,
+            base_url,
+            configuration.application.hmac_secret.clone(),
+        )?;
 
         Ok(Self { port, server })
     }
@@ -88,6 +94,7 @@ fn run(
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
+    hmac_secret: Secret<String>,
 ) -> Result<Server, std::io::Error> {
     // First create the shareable state, and then move inside the closure
     // otherwise you would create it multiple times, every time the closure
@@ -98,6 +105,8 @@ fn run(
     let email_client = web::Data::new(email_client);
 
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+
+    let hmac_secret = web::Data::new(HMACSecret(hmac_secret));
 
     // HttpServer receives a closure returning an App
     // It will call this closure in multiple threads (to create a multi-threaded
@@ -122,9 +131,13 @@ fn run(
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
             .app_data(base_url.clone())
+            .app_data(hmac_secret)
     })
     .listen(listener)?
     .run(); // It does not run yet because we have not awaited it
 
     Ok(server)
 }
+
+#[derive(Clone)]
+pub struct HMACSecret(pub Secret<String>);
