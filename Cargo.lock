@@ -1317,6 +1317,7 @@ dependencies = [
     "config",
     "dotenv",
     "fake",
+    "hex",
     "hmac",
     "htmlescape",
     "lettre",
@@ -1339,8 +1340,8 @@ dependencies = [
     "tracing-subscriber",
     "unicode-segmentation",
     "urlencoding",
- "uuid",
- "validator",
+    "uuid",
+    "validator",
 ]
 
 [[package]]

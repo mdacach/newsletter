@@ -131,7 +131,7 @@ fn run(
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
             .app_data(base_url.clone())
-            .app_data(hmac_secret)
+            .app_data(hmac_secret.clone())
     })
     .listen(listener)?
     .run(); // It does not run yet because we have not awaited it
