@@ -35,6 +35,7 @@ pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
     pub test_user: TestUser,
+    pub api_client: reqwest::Client,
 }
 
 pub struct TestUser {
@@ -79,7 +80,7 @@ impl TestUser {
 impl TestApp {
     // Performs a post request to subscriptions.
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
-        reqwest::Client::new()
+        self.api_client
             .post(&format!("{}/subscriptions", &self.address))
             // x-www-form-urlencoded is a good way to encode information from Forms.
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -94,7 +95,7 @@ impl TestApp {
             username, password, ..
         } = &self.test_user;
 
-        reqwest::Client::new()
+        self.api_client
             .post(&format!("{}/newsletters", &self.address))
             .basic_auth(username, Some(password))
             .json(&body)
@@ -107,16 +108,24 @@ impl TestApp {
     where
         Body: serde::Serialize,
     {
-        reqwest::Client::builder()
-            // In order to test Redirect codes, we do not want reqwest to redirect us automatically.
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .unwrap()
+        self.api_client
             .post(&format!("{}/login", &self.address))
             .form(body)
             .send()
             .await
             .expect("Failed to execute request.")
+    }
+
+    // No need to expose the full Response, we just need the HTML.
+    pub async fn get_login_html(&self) -> String {
+        self.api_client
+            .get(&format!("{}/login", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+            .text()
+            .await
+            .unwrap()
     }
 }
 
@@ -152,6 +161,14 @@ pub async fn spawn_app() -> TestApp {
     let application_port = application.port();
     let address = format!("http://127.0.0.1:{}", application.port());
 
+    let client = reqwest::Client::builder()
+        // Do not redirect automatically (in order for us to test redirections).
+        .redirect(reqwest::redirect::Policy::none())
+        // Store cookies.
+        .cookie_store(true)
+        .build()
+        .unwrap();
+
     // This makes the server run in another thread.
     let _ = tokio::spawn(application.run_until_stopped());
 
@@ -160,6 +177,7 @@ pub async fn spawn_app() -> TestApp {
         address,
         db_pool: get_connection_pool(&configuration.database),
         test_user: TestUser::generate(),
+        api_client: client,
     };
     test_app.test_user.store(&test_app.db_pool).await;
 
