@@ -1,11 +1,10 @@
 use newsletter::configuration::get_configuration;
 use newsletter::startup::Application;
-
 use newsletter::telemetry;
 
 #[tokio::main]
 // Result so that we can propagate the errors with `?`
-async fn main() -> std::io::Result<()> {
+async fn main() -> anyhow::Result<()> {
     // We need our application to be Observable.
     // This subscriber will log relevant information using `tracing`.
     // We can use such information to debug the application, even in production.

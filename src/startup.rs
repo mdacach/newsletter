@@ -1,5 +1,7 @@
 use std::net::TcpListener;
 
+use actix_session::storage::RedisSessionStore;
+use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
@@ -23,7 +25,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(configuration: &Settings) -> Result<Self, std::io::Error> {
+    pub async fn build(configuration: &Settings) -> Result<Self, anyhow::Error> {
         // Get the connection pool from already-running database.
         // (The docker script spins up postgres)
         let connection_pool = get_connection_pool(&configuration.database);
@@ -60,7 +62,9 @@ impl Application {
             email_client,
             base_url,
             configuration.application.hmac_secret.clone(),
-        )?;
+            configuration.redis_uri.clone(),
+        )
+        .await?;
 
         Ok(Self { port, server })
     }
@@ -92,13 +96,14 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
         .expect("Wrong Database URL format.")
 }
 
-fn run(
+async fn run(
     listener: TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
     hmac_secret: Secret<String>,
-) -> Result<Server, std::io::Error> {
+    redis_uri: Secret<String>,
+) -> Result<Server, anyhow::Error> {
     // First create the shareable state, and then move inside the closure
     // otherwise you would create it multiple times, every time the closure
     // runs.
@@ -110,9 +115,12 @@ fn run(
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
 
     // In order to be able to send flash messages (such as errors when authentication fails for login).
-    let message_store =
-        CookieMessageStore::builder(Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
+    let message_store = CookieMessageStore::builder(secret_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
+
+    // Session management with Redis.
+    let redis_store = RedisSessionStore::new(redis_uri.expose_secret()).await?;
 
     // HttpServer receives a closure returning an App
     // It will call this closure in multiple threads (to create a multi-threaded
@@ -124,6 +132,10 @@ fn run(
         App::new()
             // Middleware
             .wrap(message_framework.clone())
+            .wrap(SessionMiddleware::new(
+                redis_store.clone(),
+                secret_key.clone(),
+            ))
             .wrap(TracingLogger::default())
             // Note that order here is important, if we had a dynamic /{name} route first,
             // requests to /health_check would match {name}

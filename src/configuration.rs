@@ -5,6 +5,7 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub smtp: SMTPSettings,
+    pub redis_uri: Secret<String>,
 }
 
 #[derive(serde::Deserialize, Debug)]

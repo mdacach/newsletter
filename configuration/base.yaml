@@ -6,3 +6,4 @@ database:
   username: "postgres"
   password: "password"
   database_name: "newsletter"
+redis_uri: "redis://127.0.0.1:6379"
