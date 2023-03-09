@@ -44,7 +44,7 @@ pub async fn change_password(
         .map_err(opaque_error_500)?;
     let credentials = Credentials {
         username,
-        password: form.0.current_password,
+        password: form.0.current_password.clone(),
     };
     if let Err(error) = validate_credentials(credentials, &pool).await {
         return match error {
@@ -52,8 +52,13 @@ pub async fn change_password(
                 FlashMessage::error("The current password is incorrect.").send();
                 Ok(see_other("/admin/password"))
             }
-            AuthError::UnexpectedError(_) => Err(opaque_error_500(error).into()),
+            AuthError::UnexpectedError(_) => Err(opaque_error_500(error)),
         };
+    }
+
+    if new_password.len() < 12 || new_password.len() > 128 {
+        FlashMessage::error("Password length must be between 12 and 128.").send();
+        return Ok(see_other("/admin/password"));
     }
 
     todo!()
