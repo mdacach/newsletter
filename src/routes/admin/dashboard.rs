@@ -5,6 +5,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::session_state::TypedSession;
+use crate::utils::opaque_error_500;
 
 pub async fn admin_dashboard(
     session: TypedSession,
@@ -51,11 +52,4 @@ async fn get_username(user_id: Uuid, pool: &PgPool) -> Result<String, anyhow::Er
     .context("Failed to perform a query to retrieve a username.")?;
 
     Ok(row.username)
-}
-
-fn opaque_error_500<T>(error: T) -> actix_web::Error
-where
-    T: std::fmt::Debug + std::fmt::Display + 'static,
-{
-    actix_web::error::ErrorInternalServerError(error)
 }
