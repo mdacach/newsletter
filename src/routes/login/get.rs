@@ -1,56 +1,16 @@
 use actix_web::http::header::ContentType;
-use actix_web::{web, HttpResponse};
-use hmac::{Hmac, Mac};
-use secrecy::ExposeSecret;
+use actix_web::{HttpRequest, HttpResponse};
 
-use crate::startup::HMACSecret;
-
-#[derive(serde::Deserialize)]
-pub struct QueryParams {
-    error: String,
-    tag: String,
-}
-
-impl QueryParams {
-    fn verify(self, secret: &HMACSecret) -> Result<String, anyhow::Error> {
-        let tag = hex::decode(self.tag)?;
-        let query_string = format!("error={}", urlencoding::Encoded::new(&self.error));
-
-        let mut mac =
-            Hmac::<sha2::Sha256>::new_from_slice(secret.0.expose_secret().as_bytes()).unwrap();
-        mac.update(query_string.as_bytes());
-        mac.verify_slice(&tag)?;
-
-        Ok(self.error)
-    }
-}
-
-pub async fn login_form(
-    query: Option<web::Query<QueryParams>>,
-    secret: web::Data<HMACSecret>,
-) -> HttpResponse {
-    let error_html = match query {
+pub async fn login_form(request: HttpRequest) -> HttpResponse {
+    let error_html: String = match request.cookie("_flash") {
         None => "".into(),
-        Some(query) => match query.0.verify(&secret) {
-            Ok(error_message_to_show) => {
-                format!(
-                    "<p><i>{}<i></p>",
-                    htmlescape::encode_minimal(&error_message_to_show)
-                )
-            }
-            Err(error) => {
-                tracing::warn!(
-                    error.message = %error,
-                    error.cause_chain = ?error,
-                    "Failed to verify query parameters using HMAC tag.");
-                "".into()
-            }
-        },
+        Some(cookie) => {
+            println!("cookie value {}", cookie.value());
+            format!("<p><i>{}</i></p>", cookie.value())
+        }
     };
-
     HttpResponse::Ok()
         .content_type(ContentType::html())
-        // .body(include_str!("login.html"))
         // We render the optional error message together with the page.
         .body(format!(
             r#"<!DOCTYPE html>
