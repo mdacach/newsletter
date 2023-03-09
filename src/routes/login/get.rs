@@ -1,3 +1,5 @@
+use actix_web::cookie;
+use actix_web::cookie::Cookie;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpRequest, HttpResponse};
 
@@ -9,7 +11,8 @@ pub async fn login_form(request: HttpRequest) -> HttpResponse {
             format!("<p><i>{}</i></p>", cookie.value())
         }
     };
-    HttpResponse::Ok()
+
+    let mut response = HttpResponse::Ok()
         .content_type(ContentType::html())
         // We render the optional error message together with the page.
         .body(format!(
@@ -40,5 +43,12 @@ pub async fn login_form(request: HttpRequest) -> HttpResponse {
     </form>
 </body>
 </html>"#,
-        ))
+        ));
+
+    response
+        // Remove the _flash cookie that was used for the error message.
+        .add_removal_cookie(&Cookie::new("_flash", ""))
+        .unwrap();
+
+    response
 }
