@@ -1,10 +1,10 @@
 use std::fmt::Formatter;
 
-use actix_web::cookie::Cookie;
 use actix_web::error::InternalError;
 use actix_web::http::header::LOCATION;
 use actix_web::web;
 use actix_web::HttpResponse;
+use actix_web_flash_messages::FlashMessage;
 use secrecy::Secret;
 use sqlx::PgPool;
 
@@ -50,9 +50,10 @@ pub async fn login(
                 }
             };
 
+            FlashMessage::error(error.to_string()).send();
+
             let response = HttpResponse::SeeOther()
                 .insert_header((LOCATION, "/login"))
-                .cookie(Cookie::new("_flash", error.to_string()))
                 .finish();
             Err(InternalError::from_response(error, response))
         }

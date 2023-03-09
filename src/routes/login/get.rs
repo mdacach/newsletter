@@ -1,18 +1,16 @@
-use actix_web::cookie;
-use actix_web::cookie::Cookie;
+use std::fmt::Write;
+
 use actix_web::http::header::ContentType;
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::HttpResponse;
+use actix_web_flash_messages::{IncomingFlashMessages, Level};
 
-pub async fn login_form(request: HttpRequest) -> HttpResponse {
-    let error_html: String = match request.cookie("_flash") {
-        None => "".into(),
-        Some(cookie) => {
-            println!("cookie value {}", cookie.value());
-            format!("<p><i>{}</i></p>", cookie.value())
-        }
-    };
+pub async fn login_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
+    let mut error_html = String::new();
+    for m in flash_messages.iter().filter(|m| m.level() == Level::Error) {
+        writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap();
+    }
 
-    let mut response = HttpResponse::Ok()
+    let response = HttpResponse::Ok()
         .content_type(ContentType::html())
         // We render the optional error message together with the page.
         .body(format!(
@@ -44,11 +42,6 @@ pub async fn login_form(request: HttpRequest) -> HttpResponse {
 </body>
 </html>"#,
         ));
-
-    response
-        // Remove the _flash cookie that was used for the error message.
-        .add_removal_cookie(&Cookie::new("_flash", ""))
-        .unwrap();
 
     response
 }

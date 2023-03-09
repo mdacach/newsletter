@@ -1,7 +1,10 @@
 use std::net::TcpListener;
 
+use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
+use actix_web_flash_messages::storage::CookieMessageStore;
+use actix_web_flash_messages::FlashMessagesFramework;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
@@ -106,7 +109,10 @@ fn run(
 
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
 
-    let hmac_secret = web::Data::new(HMACSecret(hmac_secret));
+    // In order to be able to send flash messages (such as errors when authentication fails for login).
+    let message_store =
+        CookieMessageStore::builder(Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let message_framework = FlashMessagesFramework::builder(message_store).build();
 
     // HttpServer receives a closure returning an App
     // It will call this closure in multiple threads (to create a multi-threaded
@@ -117,6 +123,7 @@ fn run(
     let server = HttpServer::new(move || {
         App::new()
             // Middleware
+            .wrap(message_framework.clone())
             .wrap(TracingLogger::default())
             // Note that order here is important, if we had a dynamic /{name} route first,
             // requests to /health_check would match {name}
