@@ -8,6 +8,7 @@ env:
   APP_SMTP__USERNAME: ${{ secrets.APP_SMTP__USERNAME }}
   APP_SMTP__PASSWORD: ${{ secrets.APP_SMTP__PASSWORD }}
   APP_SMTP__FROM: ${{ secrets.APP_SMTP__FROM }}
+  APP_APPLICATION__HMAC_SECRET: ${{ secrets.APP_APPLICATION__HMAC_SECRET }}
   
 
 jobs:
