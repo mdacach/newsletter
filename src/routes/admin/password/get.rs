@@ -4,17 +4,9 @@ use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
 
-use crate::session_state::TypedSession;
-use crate::utils::{opaque_error_500, see_other};
-
 pub async fn change_password_form(
-    session: TypedSession,
     flash_messages: IncomingFlashMessages,
 ) -> Result<HttpResponse, actix_web::Error> {
-    if session.get_user_id().map_err(opaque_error_500)?.is_none() {
-        return Ok(see_other("/login"));
-    }
-
     let mut msg_html = String::new();
     for m in flash_messages.iter() {
         writeln!(msg_html, "<p><i>{}</i></p>", m.content()).unwrap();
