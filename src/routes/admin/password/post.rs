@@ -1,7 +1,9 @@
+use actix_web::error::InternalError;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::authentication::{validate_credentials, AuthError, Credentials};
 use crate::routes::admin::dashboard::get_username;
@@ -15,14 +17,24 @@ pub struct FormData {
     new_password_check: Secret<String>,
 }
 
+async fn reject_anonymous_users(session: TypedSession) -> Result<Uuid, actix_web::Error> {
+    match session.get_user_id().map_err(opaque_error_500)? {
+        Some(user_id) => Ok(user_id),
+        None => {
+            // Redirect to login if user is not authenticated.
+            let response = see_other("/login");
+            let error = anyhow::anyhow!("The user has not logged in.");
+            Err(InternalError::from_response(error, response).into())
+        }
+    }
+}
+
 pub async fn change_password(
     form: web::Form<FormData>,
     session: TypedSession,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    if session.get_user_id().map_err(opaque_error_500)?.is_none() {
-        return Ok(see_other("/login"));
-    }
+    let user_id = reject_anonymous_users(session).await?;
 
     let new_password = form.new_password.expose_secret();
     let new_password_check = form.new_password_check.expose_secret();
@@ -34,11 +46,6 @@ pub async fn change_password(
         return Ok(see_other("/admin/password"));
     }
 
-    let user_id = session.get_user_id().map_err(opaque_error_500)?;
-    if user_id.is_none() {
-        return Ok(see_other("/login"));
-    }
-    let user_id = user_id.unwrap();
     let username = get_username(user_id, &pool)
         .await
         .map_err(opaque_error_500)?;
