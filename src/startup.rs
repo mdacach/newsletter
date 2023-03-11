@@ -140,19 +140,20 @@ async fn run(
                 secret_key.clone(),
             ))
             .wrap(TracingLogger::default())
-            // Note that order here is important, if we had a dynamic /{name} route first,
-            // requests to /health_check would match {name}
-            .route("/health_check", web::get().to(health_check))
-            .route("/subscriptions", web::post().to(subscribe))
-            .route("/subscriptions/confirm", web::get().to(confirm))
-            .route("/newsletters", web::post().to(publish_newsletter))
+            .route("/", web::get().to(home))
             .route("/login", web::get().to(login_form))
             .route("/login", web::post().to(login))
-            .route("/admin/dashboard", web::get().to(admin_dashboard))
-            .route("/admin/password", web::get().to(change_password_form))
-            .route("/admin/password", web::post().to(change_password))
-            .route("/admin/logout", web::post().to(log_out))
-            .route("/", web::get().to(home))
+            .route("/health_check", web::get().to(health_check))
+            .route("/newsletters", web::post().to(publish_newsletter))
+            .route("/subscriptions", web::post().to(subscribe))
+            .route("/subscriptions/confirm", web::get().to(confirm))
+            .service(
+                web::scope("/admin")
+                    .route("dashboard", web::get().to(admin_dashboard))
+                    .route("password", web::get().to(change_password_form))
+                    .route("password", web::post().to(change_password))
+                    .route("logout", web::post().to(log_out)),
+            )
             // Shareable state between handlers
             .app_data(db_pool.clone()) // Here we pass a clone
             .app_data(email_client.clone())
