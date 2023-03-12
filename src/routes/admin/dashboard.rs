@@ -31,9 +31,15 @@ pub async fn admin_dashboard(
     <ol>
         <li><a href="/admin/password">Change password</a></li>
         <li>
-            <form name="logoutForm" action="/admin/logout" method="pont">
+            <form name="logoutForm" action="/admin/logout" method="post">
                 <input type="submit" value="Logout">
             </form>
+        </li>
+        <li>
+            <form name="sendNewsletter" action="/admin/newsletters" method="get">
+                <input type="submit" value="Newsletter">
+            </form>
+        </li>
     </ol>
 </body>
 </html>"#
