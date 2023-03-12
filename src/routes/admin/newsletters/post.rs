@@ -13,6 +13,7 @@ use crate::utils::{opaque_error_500, see_other};
 pub struct FormData {
     title: String,
     content: String,
+    idempotency_key: String,
 }
 
 #[tracing::instrument(
