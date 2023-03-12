@@ -78,6 +78,14 @@ impl TestUser {
 }
 
 impl TestApp {
+    pub async fn login_with_test_user(&self) {
+        let login_body = serde_json::json!({
+        "username": &self.test_user.username,
+        "password": &self.test_user.password,
+        });
+        self.post_login(&login_body).await;
+    }
+
     // Performs a post request to subscriptions.
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         self.api_client
