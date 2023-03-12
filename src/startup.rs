@@ -18,9 +18,8 @@ use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
 use crate::routes::{
     admin_dashboard, change_password, change_password_form, confirm, health_check, home, log_out,
-    login, login_form, publish_newsletter_form,
+    login, login_form, publish_newsletter, publish_newsletter_form, subscribe,
 };
-use crate::routes::{publish_newsletter, subscribe};
 
 // We need a way to know which port the application is running,
 // and Server alone does not expose that.
@@ -146,7 +145,6 @@ async fn run(
             .route("/login", web::get().to(login_form))
             .route("/login", web::post().to(login))
             .route("/health_check", web::get().to(health_check))
-            .route("/newsletters", web::post().to(publish_newsletter))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
             .service(
@@ -156,7 +154,8 @@ async fn run(
                     .route("password", web::get().to(change_password_form))
                     .route("password", web::post().to(change_password))
                     .route("logout", web::post().to(log_out))
-                    .route("newsletters", web::get().to(publish_newsletter_form)),
+                    .route("newsletters", web::get().to(publish_newsletter_form))
+                    .route("newsletters", web::post().to(publish_newsletter)),
             )
             // Shareable state between handlers
             .app_data(db_pool.clone()) // Here we pass a clone
